@@ -34,6 +34,7 @@ type WrappingMode int
 const (
 	WrapCharacter WrappingMode = iota // wrap at terminal width
 	WrapNever                         // truncate / pass through
+	WrapWord                          // wrap at word boundaries
 )
 
 // PagingMode controls the pager.
@@ -178,8 +179,13 @@ type Config struct {
 
 	VisibleLines VisibleLines
 
-	Theme         string
-	SyntaxMapping SyntaxMapping
+	Theme      string
+	ThemeLight string // theme to use on a light terminal background
+	ThemeDark  string // theme to use on a dark terminal background
+	// DarkBackground reports whether the terminal background is dark; it selects
+	// between ThemeLight and ThemeDark.
+	DarkBackground bool
+	SyntaxMapping  SyntaxMapping
 
 	Pager string
 

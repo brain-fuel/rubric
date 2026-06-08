@@ -7,7 +7,6 @@
 package controller
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -60,29 +59,52 @@ func (c *Controller) runOne(w io.Writer, in input.Input, addPadding bool) error 
 		return err
 	}
 
-	// Cat mode: stream raw bytes, no decorations or highlighting.
-	if c.cfg.LoopThrough {
+	// $LESSOPEN preprocessing for file inputs.
+	if c.cfg.UseLessOpen && opened.Kind == input.KindFile {
+		if pc, ok := lessOpenProcess(opened.Path); ok {
+			content = pc
+		}
+	}
+
+	ct := detectContentType(content)
+
+	// Cat mode: stream raw UTF-8 bytes unchanged. Non-UTF-8 content (UTF-16,
+	// binary) still needs decoding/handling, so it falls through.
+	if c.cfg.LoopThrough && (ct == ContentUTF8 || ct == ContentEmpty) {
 		_, err := w.Write(content)
 		return err
 	}
 
-	binary := isBinary(content) && !c.cfg.ShowNonprintable && c.cfg.Binary != config.BinaryAsText
-	empty := len(content) == 0
+	binary := ct == ContentBinary && !c.cfg.ShowNonprintable && c.cfg.Binary != config.BinaryAsText
+	empty := ct == ContentEmpty
 
 	if empty && c.cfg.QuietEmpty {
 		return nil
 	}
 
-	rawLines, lastLine := splitLines(content)
+	text := decodeContent(content, ct)
 
-	// Resolve syntax.
-	theme := assets.GetTheme(c.cfg.Theme)
-	syntax := c.resolveSyntax(opened, content)
+	// Resolve syntax (needs the decoded text for content-based detection).
+	theme := c.resolveTheme()
+	syntax := c.resolveSyntax(opened, []byte(text))
+	isPlainText := syntax.Name() == "Plain Text" || syntax.Name() == "plaintext"
 
-	// Highlight (skip for binary / non-printable / plain output).
+	// Strip man-page overstrike formatting.
+	if strings.IndexByte(text, '\b') >= 0 {
+		text = stripOverstrike(text)
+	}
+
+	// Strip ANSI escapes from the input before highlighting, per bat's rules.
+	if c.shouldStripAnsi(isPlainText) {
+		text = stripANSI(text)
+	}
+
+	rawLines, lastLine := splitLines(text)
+
+	// Highlight (skip for binary / non-printable output).
 	var segLines [][]assets.Segment
-	if !binary && !c.cfg.ShowNonprintable {
-		if sl, herr := syntax.HighlightLines(string(content), theme); herr == nil {
+	if !binary && !c.cfg.ShowNonprintable && c.cfg.ColoredOutput {
+		if sl, herr := syntax.HighlightLines(text, theme); herr == nil {
 			segLines = sl
 		}
 	}
@@ -109,11 +131,25 @@ func (c *Controller) runOne(w io.Writer, in input.Input, addPadding bool) error 
 	visible := c.visibleRanges(changeMap, lastLine)
 
 	lastPrinted := 0
+	consecutiveEmpty := 0
 	for idx, raw := range rawLines {
 		lineNumber := idx + 1
 		if visible.Check(lineNumber, lastLine) != linerange.InRange {
 			continue
 		}
+
+		// Squeeze runs of blank lines down to SqueezeLines.
+		if c.cfg.SqueezeLines > 0 {
+			if raw.text == "" {
+				consecutiveEmpty++
+				if consecutiveEmpty > c.cfg.SqueezeLines {
+					continue
+				}
+			} else {
+				consecutiveEmpty = 0
+			}
+		}
+
 		// Snip separator across a gap between visible ranges.
 		if c.cfg.StyleComponents.Snip() && lastPrinted > 0 && lineNumber > lastPrinted+1 {
 			if err := p.PrintSnip(w); err != nil {
@@ -209,11 +245,11 @@ type rawLine struct {
 	newln bool
 }
 
-func splitLines(content []byte) ([]rawLine, int) {
+func splitLines(content string) ([]rawLine, int) {
 	if len(content) == 0 {
 		return nil, 0
 	}
-	parts := strings.SplitAfter(string(content), "\n")
+	parts := strings.SplitAfter(content, "\n")
 	// SplitAfter leaves a trailing "" when content ends in "\n"; drop it.
 	if parts[len(parts)-1] == "" {
 		parts = parts[:len(parts)-1]
@@ -228,12 +264,34 @@ func splitLines(content []byte) ([]rawLine, int) {
 	return lines, len(lines)
 }
 
-func isBinary(content []byte) bool {
-	n := len(content)
-	if n > 8192 {
-		n = 8192
+// resolveTheme picks the highlighting theme, honoring light/dark overrides.
+func (c *Controller) resolveTheme() assets.Theme {
+	name := c.cfg.Theme
+	if c.cfg.ThemeDark != "" || c.cfg.ThemeLight != "" {
+		if c.cfg.DarkBackground {
+			if c.cfg.ThemeDark != "" {
+				name = c.cfg.ThemeDark
+			}
+		} else if c.cfg.ThemeLight != "" {
+			name = c.cfg.ThemeLight
+		}
 	}
-	return bytes.IndexByte(content[:n], 0) >= 0
+	return assets.GetTheme(name)
+}
+
+// shouldStripAnsi implements bat's strip-ansi decision table.
+func (c *Controller) shouldStripAnsi(isPlainText bool) bool {
+	if c.cfg.ShowNonprintable {
+		return false
+	}
+	switch c.cfg.StripAnsi {
+	case config.StripAlways:
+		return true
+	case config.StripNever:
+		return false
+	default: // auto: plain text may legitimately contain escapes, so keep them
+		return !isPlainText
+	}
 }
 
 func toChangeKinds(c gitdiff.LineChanges) map[int]decorations.ChangeKind {

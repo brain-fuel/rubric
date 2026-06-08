@@ -49,6 +49,32 @@ func Run(args []string) int {
 		fmt.Printf("gat %s\n", version)
 		return 0
 	}
+	if getString(fs, "completion") != "" {
+		return printCompletion(getString(fs, "completion"))
+	}
+	if getBool(fs, "diagnostic") {
+		printDiagnostic(fs)
+		return 0
+	}
+	if getBool(fs, "config-file") {
+		fmt.Println(configFilePath())
+		return 0
+	}
+	if getBool(fs, "config-dir") {
+		fmt.Println(configDir())
+		return 0
+	}
+	if getBool(fs, "cache-dir") {
+		fmt.Println(cacheDir())
+		return 0
+	}
+	if getBool(fs, "generate-config-file") {
+		return generateConfigFile()
+	}
+	if getBool(fs, "acknowledgements") {
+		fmt.Println(acknowledgements())
+		return 0
+	}
 	if getBool(fs, "list-themes") {
 		for _, t := range assets.ListThemes() {
 			fmt.Println(t)
@@ -74,6 +100,11 @@ func Run(args []string) int {
 	out := pager.FromMode(cfg.PagingMode, cfg.Pager, interactive, chop,
 		cfg.PagingMode == config.PagingAuto || cfg.PagingMode == config.PagingQuitIfOneScreen)
 	defer out.Close()
+
+	// Set the terminal title when paging, mirroring bat.
+	if cfg.SetTerminalTitle && cfg.PagingMode != config.PagingNever {
+		fmt.Fprintf(os.Stdout, "\x1b]2;gat: %s\x07", strings.Join(fs.Args(), " "))
+	}
 
 	ctrl := controller.New(cfg, os.Stdin)
 	if err := ctrl.Run(out, inputs); err != nil {
@@ -126,6 +157,12 @@ func newFlagSet() *flag.FlagSet {
 	fs.String("completion", "", "Generate a shell completion script (bash|zsh|fish)")
 	fs.Bool("lessopen", false, "Enable the $LESSOPEN preprocessor")
 	fs.Bool("no-lessopen", false, "Disable the $LESSOPEN preprocessor")
+	fs.Bool("config-file", false, "Show path to the configuration file")
+	fs.Bool("generate-config-file", false, "Generate a default configuration file")
+	fs.Bool("config-dir", false, "Show bat's configuration directory")
+	fs.Bool("cache-dir", false, "Show bat's cache directory")
+	fs.Bool("diagnostic", false, "Show diagnostic information for bug reports")
+	fs.Bool("acknowledgements", false, "Show acknowledgements")
 	fs.Bool("quiet-empty", false, "Produce no output when the input is empty")
 	fs.Bool("set-terminal-title", false, "Set the terminal title when using a pager")
 	fs.BoolP("version", "V", false, "Show version information")
@@ -140,6 +177,7 @@ func newFlagSet() *flag.FlagSet {
 
 func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	cfg := config.Default()
+	var err error
 
 	plainCount, _ := fs.GetCount("plain")
 	plain := plainCount > 0
@@ -191,7 +229,9 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	case "never":
 		cfg.WrappingMode = config.WrapNever
 		cfg.Chop = true
-	case "character", "word":
+	case "word":
+		cfg.WrappingMode = config.WrapWord
+	case "character":
 		cfg.WrappingMode = config.WrapCharacter
 	default: // auto: wrap when interactive or when a width was set explicitly
 		if interactive || termWidthExplicit {
@@ -209,11 +249,14 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	cfg.PagingMode = resolvePaging(fs, interactive)
 	cfg.Pager = getString(fs, "pager")
 
-	// Theme.
+	// Theme + light/dark selection.
 	cfg.Theme = getString(fs, "theme")
 	if cfg.Theme == "" {
 		cfg.Theme = themeFromEnv()
 	}
+	cfg.ThemeLight = getString(fs, "theme-light")
+	cfg.ThemeDark = getString(fs, "theme-dark")
+	cfg.DarkBackground = detectDarkBackground()
 
 	// Language / fallback.
 	cfg.Language = getString(fs, "language")
@@ -242,9 +285,13 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	cfg.QuietEmpty = getBool(fs, "quiet-empty")
 	cfg.SetTerminalTitle = getBool(fs, "set-terminal-title")
 	cfg.Unbuffered = getBool(fs, "unbuffered")
+	cfg.UseLessOpen = getBool(fs, "lessopen") && !getBool(fs, "no-lessopen")
 
 	// Style components.
-	cfg.StyleComponents = resolveStyle(fs, interactive, plain, number, showAll)
+	cfg.StyleComponents, err = resolveStyle(fs, interactive, plain, number, showAll)
+	if err != nil {
+		return cfg, err
+	}
 
 	// Decorations override.
 	switch getString(fs, "decorations") {
@@ -254,10 +301,17 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 		// keep resolved components
 	}
 
-	// Plain (cat) mode when no decorations, no color, and no transformations
-	// that require per-line processing (non-printable, wrapping).
+	// Tab width default: bat uses 0 (pass tabs through) in plain+no-paging mode,
+	// otherwise 4.
+	if getString(fs, "tabs") == "" && cfg.StyleComponents.Plain() && cfg.PagingMode == config.PagingNever {
+		cfg.TabWidth = 0
+	}
+
+	// Plain (cat) mode: only when nothing requires per-line processing.
 	if cfg.StyleComponents.Plain() && !cfg.ColoredOutput && !cfg.ShowNonprintable &&
-		cfg.WrappingMode == config.WrapNever {
+		cfg.WrappingMode == config.WrapNever && cfg.SqueezeLines == 0 &&
+		cfg.StripAnsi != config.StripAlways && cfg.HighlightedLines.Ranges.Empty() &&
+		!cfg.VisibleLines.DiffMode && len(getStringArray(fs, "line-range")) == 0 {
 		cfg.LoopThrough = true
 	}
 
@@ -311,12 +365,12 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	return cfg, nil
 }
 
-func resolveStyle(fs *flag.FlagSet, interactive, plain, number, showAll bool) style.Components {
+func resolveStyle(fs *flag.FlagSet, interactive, plain, number, showAll bool) (style.Components, error) {
 	if plain {
-		return style.NewComponents([]style.Component{style.Plain})
+		return style.NewComponents([]style.Component{style.Plain}), nil
 	}
 	if number {
-		return style.NewComponents([]style.Component{style.LineNumbers})
+		return style.NewComponents([]style.Component{style.LineNumbers}), nil
 	}
 
 	styleStr := getString(fs, "style")
@@ -326,13 +380,13 @@ func resolveStyle(fs *flag.FlagSet, interactive, plain, number, showAll bool) st
 	if styleStr == "" {
 		// Default style is "auto": expands to the default set on an interactive
 		// terminal, and to plain when output is redirected.
-		return style.ToComponents(nil, interactive, true)
+		return style.ToComponents(nil, interactive, true), nil
 	}
 	list, err := style.ParseComponentList(styleStr)
 	if err != nil {
-		return style.ToComponents(nil, interactive, true)
+		return style.Components{}, err
 	}
-	return style.ToComponents([]style.ComponentList{list}, interactive, false)
+	return style.ToComponents([]style.ComponentList{list}, interactive, false), nil
 }
 
 func resolvePaging(fs *flag.FlagSet, interactive bool) config.PagingMode {
@@ -375,6 +429,23 @@ func resolveTermWidth(arg string) int {
 		return n
 	}
 	return cur
+}
+
+// detectDarkBackground guesses whether the terminal has a dark background. It
+// honors COLORFGBG (set by some terminals as "fg;bg") and otherwise assumes a
+// dark background, matching bat's default assumption.
+func detectDarkBackground() bool {
+	fgbg := os.Getenv("COLORFGBG")
+	if fgbg == "" {
+		return true
+	}
+	parts := strings.Split(fgbg, ";")
+	bg := parts[len(parts)-1]
+	if n, err := strconv.Atoi(strings.TrimSpace(bg)); err == nil {
+		// ANSI colors 0-6 and 8 are dark; 7 and 9-15 are light.
+		return n < 7 || n == 8
+	}
+	return true
 }
 
 func themeFromEnv() string {
@@ -420,15 +491,7 @@ func listLanguages() {
 
 // loadConfigArgs reads gat's config file and returns it as argv tokens.
 func loadConfigArgs() []string {
-	path := os.Getenv("BAT_CONFIG_PATH")
-	if path == "" {
-		home, err := os.UserConfigDir()
-		if err != nil {
-			return nil
-		}
-		path = home + "/gat/config"
-	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(configFilePath())
 	if err != nil {
 		return nil
 	}

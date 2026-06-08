@@ -435,32 +435,50 @@ func (p *InteractivePrinter) emitNoWrap(sb *strings.Builder, cells []cell, curso
 	}
 }
 
-// emitWrap performs character wrapping at cursorMax, drawing the continuation
-// gutter on each wrapped row.
+// emitWrap performs character or word wrapping at cursorMax, drawing the
+// continuation gutter on each wrapped row.
 func (p *InteractivePrinter) emitWrap(sb *strings.Builder, cells []cell, cursorMax int, bg string, lineNumber int) {
 	gutter := p.continuationGutter(lineNumber)
+	wordWrap := p.cfg.WrappingMode == config.WrapWord
 	width := 0
+	lastWS := -1 // index in buf of the most recent whitespace cell
 	var buf []cell
-	flush := func(last bool) {
-		writeCells(sb, buf, bg)
+	flushTo := func(emitEnd int, last bool, carry []cell) {
+		writeCells(sb, buf[:emitEnd], bg)
 		if bg != "" {
-			fillBG(sb, bg, cursorMax-width)
+			emitted := 0
+			for _, c := range buf[:emitEnd] {
+				emitted += c.width
+			}
+			fillBG(sb, bg, cursorMax-emitted)
 		}
 		if !last {
 			sb.WriteString("\n")
 			sb.WriteString(gutter)
 		}
-		buf = buf[:0]
+		buf = append(buf[:0], carry...)
 		width = 0
+		for _, c := range buf {
+			width += c.width
+		}
+		lastWS = -1
 	}
 	for _, c := range cells {
 		if len(buf) > 0 && width+c.width > cursorMax {
-			flush(false)
+			if wordWrap && lastWS >= 0 && lastWS < len(buf)-1 {
+				carry := append([]cell(nil), buf[lastWS+1:]...)
+				flushTo(lastWS, false, carry)
+			} else {
+				flushTo(len(buf), false, nil)
+			}
 		}
 		buf = append(buf, c)
+		if wordWrap && c.r == ' ' {
+			lastWS = len(buf) - 1
+		}
 		width += c.width
 	}
-	flush(true)
+	flushTo(len(buf), true, nil)
 }
 
 // continuationGutter is the blank gutter drawn to the left of wrapped rows.

@@ -39,6 +39,20 @@ git diff | ./gat -l diff
 - Env vars: `BAT_THEME`, `BAT_STYLE`, `BAT_PAGER`, `PAGER`, `NO_COLOR`,
   `COLORTERM`, `COLUMNS`
 - Reads files, multiple files (concatenation with per-file headers), and stdin
+- UTF-16 (LE/BE) and UTF-8 BOM decoding; binary detection + `--binary=as-text`
+- `--strip-ansi`, man-page overstrike stripping, word/character wrapping
+- Light/dark theme switching (`--theme-light`/`--theme-dark`, `COLORFGBG`)
+- Shell completions (`--completion bash|zsh|fish`), `--acknowledgements`,
+  `--diagnostic`, `--config-file`/`--config-dir`/`--cache-dir`/
+  `--generate-config-file`, `$LESSOPEN` preprocessing, `--set-terminal-title`
+
+### Intentional divergence from bat
+
+bat's `cache` subcommand (`--build`/`--clear`/`--source`/`--target`) builds and
+caches custom `.sublime-syntax` / `.tmTheme` assets. gat uses chroma's bundled
+syntaxes and themes, so there is no asset-cache step; `--no-custom-assets` and
+`--no-config` are accepted, and `--cache-dir` still reports a path for tooling
+compatibility.
 
 ## Architecture (goforge / Polylith)
 

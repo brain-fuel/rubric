@@ -81,6 +81,55 @@ func TestGridHeaderStructure(t *testing.T) {
 	}
 }
 
+func TestSqueezeBlankLines(t *testing.T) {
+	cfg := baseConfig()
+	cfg.StyleComponents = style.NewComponents([]style.Component{style.Plain})
+	cfg.SqueezeLines = 1
+	out := render(t, cfg, "a\n\n\n\n\nb\n")
+	if out != "a\n\nb\n" {
+		t.Errorf("squeeze: got %q want %q", out, "a\n\nb\n")
+	}
+}
+
+func TestStripAnsiAlways(t *testing.T) {
+	cfg := baseConfig()
+	cfg.StyleComponents = style.NewComponents([]style.Component{style.Plain})
+	cfg.StripAnsi = config.StripAlways
+	out := render(t, cfg, "\x1b[31mRED\x1b[0m\n")
+	if strings.Contains(out, "\x1b") {
+		t.Errorf("ansi not stripped: %q", out)
+	}
+	if !strings.Contains(out, "RED") {
+		t.Errorf("content lost: %q", out)
+	}
+}
+
+func TestUTF16LEDecoded(t *testing.T) {
+	cfg := baseConfig()
+	cfg.StyleComponents = style.NewComponents([]style.Component{style.Plain})
+	content := "\xff\xfeh\x00i\x00" // UTF-16LE BOM + "hi"
+	out := render(t, cfg, content)
+	if !strings.Contains(out, "hi") {
+		t.Errorf("utf16 not decoded: %q", out)
+	}
+}
+
+func TestWordWrap(t *testing.T) {
+	cfg := baseConfig()
+	cfg.StyleComponents = style.NewComponents([]style.Component{style.Plain})
+	cfg.WrappingMode = config.WrapWord
+	cfg.TermWidth = 12
+	out := render(t, cfg, "the quick brown fox\n")
+	for _, line := range strings.Split(strings.TrimRight(out, "\n"), "\n") {
+		if len(line) > 12 {
+			t.Errorf("line exceeds width: %q", line)
+		}
+	}
+	if !strings.Contains(out, "the") || !strings.Contains(out, "fox") {
+		t.Errorf("content lost in wrap: %q", out)
+	}
+}
+
 func TestShowNonprintable(t *testing.T) {
 	cfg := baseConfig()
 	cfg.ShowNonprintable = true
