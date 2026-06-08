@@ -24,7 +24,7 @@ import (
 	termdetect "goforge.dev/rubric/components/termdetect"
 )
 
-const version = "0.1.0"
+const version = "1.0.0"
 
 // Run parses args (excluding the program name), executes rubric, and returns the
 // process exit code.
