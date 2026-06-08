@@ -1,0 +1,4 @@
+# Metadata for the cli base.
+#
+# A base is an entry-point layer. It may optionally declare a worker_type; by
+# default goforge treats a base as the boundary where effects enter the system.

@@ -2,3 +2,7 @@
 /bin/
 *.test
 *.out
+ref_impl/
+
+# build artifact
+/gat

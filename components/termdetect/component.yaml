@@ -1,0 +1,9 @@
+# Metadata for the termdetect component.
+#
+# worker_type classifies the component along two axes (see principles.yaml):
+#   determinism:   deterministic | non_deterministic
+#   effectfulness: pure | [input_effect] | [output_effect] | [input_effect, output_effect]
+interface: terminfo
+worker_type:
+  determinism: deterministic
+  effectfulness: pure

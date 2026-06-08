@@ -1,0 +1,8 @@
+# Metadata for the linerange component.
+#
+# worker_type classifies the component along two axes (see principles.yaml):
+#   determinism:   deterministic | non_deterministic
+#   effectfulness: pure | [input_effect] | [output_effect] | [input_effect, output_effect]
+worker_type:
+  determinism: deterministic
+  effectfulness: pure
