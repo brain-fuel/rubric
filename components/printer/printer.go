@@ -12,9 +12,9 @@ import (
 
 	"github.com/mattn/go-runewidth"
 
-	"goforge.dev/gat/components/assets"
-	"goforge.dev/gat/components/config"
-	"goforge.dev/gat/components/decorations"
+	"goforge.dev/rubric/components/assets"
+	"goforge.dev/rubric/components/config"
+	"goforge.dev/rubric/components/decorations"
 )
 
 // Line is a single buffered input line with its precomputed highlight segments.

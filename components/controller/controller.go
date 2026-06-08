@@ -11,13 +11,13 @@ import (
 	"io"
 	"strings"
 
-	"goforge.dev/gat/components/assets"
-	"goforge.dev/gat/components/config"
-	"goforge.dev/gat/components/decorations"
-	"goforge.dev/gat/components/gitdiff"
-	"goforge.dev/gat/components/inputsrc"
-	"goforge.dev/gat/components/linerange"
-	"goforge.dev/gat/components/printer"
+	"goforge.dev/rubric/components/assets"
+	"goforge.dev/rubric/components/config"
+	"goforge.dev/rubric/components/decorations"
+	"goforge.dev/rubric/components/gitdiff"
+	"goforge.dev/rubric/components/inputsrc"
+	"goforge.dev/rubric/components/linerange"
+	"goforge.dev/rubric/components/printer"
 )
 
 // Controller renders a set of inputs according to a Config.
@@ -41,7 +41,7 @@ func (c *Controller) Run(w io.Writer, inputs []input.Input) error {
 			if firstErr == nil {
 				firstErr = err
 			}
-			fmt.Fprintf(w, "gat: %v\n", err)
+			fmt.Fprintf(w, "rubric: %v\n", err)
 		}
 	}
 	return firstErr
@@ -123,7 +123,7 @@ func (c *Controller) runOne(w io.Writer, in input.Input, addPadding bool) error 
 
 	if binary {
 		fmt.Fprintf(w, "%s: Binary content from %q will not be printed to the terminal "+
-			"(use 'gat -A' to show it).\n", "[gat warning]", opened.Name)
+			"(use 'rubric -A' to show it).\n", "[rubric warning]", opened.Name)
 		return nil
 	}
 

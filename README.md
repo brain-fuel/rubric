@@ -1,6 +1,6 @@
-# gat
+# rubric
 
-`gat` is **bat written in Go** — a `cat(1)` clone with wings. It ports
+`rubric` is **bat written in Go** — a `cat(1)` clone with wings. It ports
 [`sharkdp/bat`](https://github.com/sharkdp/bat) (reference: v0.26.1 in
 `ref_impl/bat`) to Go, aiming for feature parity while tracking the latest
 upstream behavior (e.g. no phantom git-change column, `Size:` in the `full`
@@ -13,10 +13,10 @@ Syntax highlighting and themes are provided by
 ## Build & run
 
 ```sh
-go build -o gat ./projects/gat
-./gat src/main.go
-./gat --style=full --theme=GitHub README.md
-git diff | ./gat -l diff
+go build -o rubric ./projects/rubric
+./rubric src/main.go
+./rubric --style=full --theme=GitHub README.md
+git diff | ./rubric -l diff
 ```
 
 ## Features
@@ -35,7 +35,7 @@ git diff | ./gat -l diff
 - Tab expansion (`--tabs`), squeeze blank lines (`-s`/`--squeeze-limit`)
 - Paging through `less` (`--paging`, `--pager`, `-P`); auto when interactive
 - Syntax mapping (`-m '<glob>:<syntax>'`), ignored suffixes (`--ignored-suffix`)
-- Config file (`$BAT_CONFIG_PATH` or `~/.config/gat/config`), `--no-config`
+- Config file (`$BAT_CONFIG_PATH` or `~/.config/rubric/config`), `--no-config`
 - Env vars: `BAT_THEME`, `BAT_STYLE`, `BAT_PAGER`, `PAGER`, `NO_COLOR`,
   `COLORTERM`, `COLUMNS`
 - Reads files, multiple files (concatenation with per-file headers), and stdin
@@ -49,7 +49,7 @@ git diff | ./gat -l diff
 ### Intentional divergence from bat
 
 bat's `cache` subcommand (`--build`/`--clear`/`--source`/`--target`) builds and
-caches custom `.sublime-syntax` / `.tmTheme` assets. gat uses chroma's bundled
+caches custom `.sublime-syntax` / `.tmTheme` assets. rubric uses chroma's bundled
 syntaxes and themes, so there is no asset-cache step; `--no-custom-assets` and
 `--no-config` are accepted, and `--cache-dir` still reports a path for tooling
 compatibility.
@@ -75,7 +75,7 @@ boundary), an entry-point **base**, and a deployable **project**. Run
 | `gitdiff` | `diff.rs` — per-line git changes |
 | `controller` | `controller.rs` — orchestration |
 | `cli` (base) | `bin/bat` — flag surface, config building, wiring |
-| `gat` (project) | the `gat` binary |
+| `rubric` (project) | the `rubric` binary |
 
 ## Tests
 

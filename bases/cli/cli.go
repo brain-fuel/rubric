@@ -1,4 +1,4 @@
-// Package cli is gat's entry-point layer. It ports bat's bin/bat application:
+// Package cli is rubric's entry-point layer. It ports bat's bin/bat application:
 // it defines the full command-line surface (clap_app.rs), reads the config file
 // and environment, resolves every option into a config.Config, builds the list
 // of inputs, opens the pager, and runs the controller.
@@ -14,24 +14,24 @@ import (
 
 	flag "github.com/spf13/pflag"
 
-	"goforge.dev/gat/components/assets"
-	"goforge.dev/gat/components/config"
-	"goforge.dev/gat/components/controller"
-	inputsrc "goforge.dev/gat/components/inputsrc"
-	"goforge.dev/gat/components/linerange"
-	pager "goforge.dev/gat/components/pager"
-	"goforge.dev/gat/components/style"
-	termdetect "goforge.dev/gat/components/termdetect"
+	"goforge.dev/rubric/components/assets"
+	"goforge.dev/rubric/components/config"
+	"goforge.dev/rubric/components/controller"
+	inputsrc "goforge.dev/rubric/components/inputsrc"
+	"goforge.dev/rubric/components/linerange"
+	pager "goforge.dev/rubric/components/pager"
+	"goforge.dev/rubric/components/style"
+	termdetect "goforge.dev/rubric/components/termdetect"
 )
 
 const version = "0.1.0"
 
-// Run parses args (excluding the program name), executes gat, and returns the
+// Run parses args (excluding the program name), executes rubric, and returns the
 // process exit code.
 func Run(args []string) int {
 	fs := newFlagSet()
 
-	// Prepend config-file args (BAT_CONFIG_PATH / ~/.config/gat/config), unless
+	// Prepend config-file args (BAT_CONFIG_PATH / ~/.config/rubric/config), unless
 	// disabled with --no-config, mirroring bat's config precedence.
 	allArgs := args
 	if !hasFlag(args, "--no-config") {
@@ -41,12 +41,12 @@ func Run(args []string) int {
 	}
 
 	if err := fs.Parse(allArgs); err != nil {
-		fmt.Fprintln(os.Stderr, "gat:", err)
+		fmt.Fprintln(os.Stderr, "rubric:", err)
 		return 2
 	}
 
 	if getBool(fs, "version") {
-		fmt.Printf("gat %s\n", version)
+		fmt.Printf("rubric %s\n", version)
 		return 0
 	}
 	if getString(fs, "completion") != "" {
@@ -89,7 +89,7 @@ func Run(args []string) int {
 	interactive := termdetect.StdoutIsTerminal()
 	cfg, err := buildConfig(fs, interactive)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "gat:", err)
+		fmt.Fprintln(os.Stderr, "rubric:", err)
 		return 1
 	}
 
@@ -103,7 +103,7 @@ func Run(args []string) int {
 
 	// Set the terminal title when paging, mirroring bat.
 	if cfg.SetTerminalTitle && cfg.PagingMode != config.PagingNever {
-		fmt.Fprintf(os.Stdout, "\x1b]2;gat: %s\x07", strings.Join(fs.Args(), " "))
+		fmt.Fprintf(os.Stdout, "\x1b]2;rubric: %s\x07", strings.Join(fs.Args(), " "))
 	}
 
 	ctrl := controller.New(cfg, os.Stdin)
@@ -114,7 +114,7 @@ func Run(args []string) int {
 }
 
 func newFlagSet() *flag.FlagSet {
-	fs := flag.NewFlagSet("gat", flag.ContinueOnError)
+	fs := flag.NewFlagSet("rubric", flag.ContinueOnError)
 	fs.SortFlags = false
 
 	fs.BoolP("show-all", "A", false, "Show non-printable characters (space, tab, newline, ...)")
@@ -159,8 +159,8 @@ func newFlagSet() *flag.FlagSet {
 	fs.Bool("no-lessopen", false, "Disable the $LESSOPEN preprocessor")
 	fs.Bool("config-file", false, "Show path to the configuration file")
 	fs.Bool("generate-config-file", false, "Generate a default configuration file")
-	fs.Bool("config-dir", false, "Show bat's configuration directory")
-	fs.Bool("cache-dir", false, "Show bat's cache directory")
+	fs.Bool("config-dir", false, "Show rubric's configuration directory")
+	fs.Bool("cache-dir", false, "Show rubric's cache directory")
 	fs.Bool("diagnostic", false, "Show diagnostic information for bug reports")
 	fs.Bool("acknowledgements", false, "Show acknowledgements")
 	fs.Bool("quiet-empty", false, "Produce no output when the input is empty")
@@ -168,8 +168,8 @@ func newFlagSet() *flag.FlagSet {
 	fs.BoolP("version", "V", false, "Show version information")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "gat %s — a cat(1) clone with wings (bat in Go).\n\n", version)
-		fmt.Fprintf(os.Stderr, "Usage: gat [OPTIONS] [FILE]...\n\nOptions:\n")
+		fmt.Fprintf(os.Stderr, "rubric %s — a cat(1) clone with wings (bat in Go).\n\n", version)
+		fmt.Fprintf(os.Stderr, "Usage: rubric [OPTIONS] [FILE]...\n\nOptions:\n")
 		fs.PrintDefaults()
 	}
 	return fs
@@ -489,7 +489,7 @@ func listLanguages() {
 	}
 }
 
-// loadConfigArgs reads gat's config file and returns it as argv tokens.
+// loadConfigArgs reads rubric's config file and returns it as argv tokens.
 func loadConfigArgs() []string {
 	data, err := os.ReadFile(configFilePath())
 	if err != nil {

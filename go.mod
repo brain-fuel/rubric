@@ -1,4 +1,4 @@
-module goforge.dev/gat
+module goforge.dev/rubric
 
 go 1.25.0
 

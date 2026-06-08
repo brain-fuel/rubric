@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"goforge.dev/gat/components/config"
-	inputsrc "goforge.dev/gat/components/inputsrc"
-	"goforge.dev/gat/components/linerange"
-	"goforge.dev/gat/components/style"
+	"goforge.dev/rubric/components/config"
+	inputsrc "goforge.dev/rubric/components/inputsrc"
+	"goforge.dev/rubric/components/linerange"
+	"goforge.dev/rubric/components/style"
 )
 
 func baseConfig() config.Config {

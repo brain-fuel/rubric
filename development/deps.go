@@ -3,16 +3,16 @@
 package development
 
 import (
-	_ "goforge.dev/gat/bases/cli"
-	_ "goforge.dev/gat/components/assets"
-	_ "goforge.dev/gat/components/config"
-	_ "goforge.dev/gat/components/controller"
-	_ "goforge.dev/gat/components/decorations"
-	_ "goforge.dev/gat/components/gitdiff"
-	_ "goforge.dev/gat/components/inputsrc"
-	_ "goforge.dev/gat/components/linerange"
-	_ "goforge.dev/gat/components/pager"
-	_ "goforge.dev/gat/components/printer"
-	_ "goforge.dev/gat/components/style"
-	_ "goforge.dev/gat/components/termdetect"
+	_ "goforge.dev/rubric/bases/cli"
+	_ "goforge.dev/rubric/components/assets"
+	_ "goforge.dev/rubric/components/config"
+	_ "goforge.dev/rubric/components/controller"
+	_ "goforge.dev/rubric/components/decorations"
+	_ "goforge.dev/rubric/components/gitdiff"
+	_ "goforge.dev/rubric/components/inputsrc"
+	_ "goforge.dev/rubric/components/linerange"
+	_ "goforge.dev/rubric/components/pager"
+	_ "goforge.dev/rubric/components/printer"
+	_ "goforge.dev/rubric/components/style"
+	_ "goforge.dev/rubric/components/termdetect"
 )

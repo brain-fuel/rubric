@@ -1,4 +1,4 @@
-top-namespace: gat
+top-namespace: rubric
 vcs:
     name: git
     auto-add: false

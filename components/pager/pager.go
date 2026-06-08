@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"goforge.dev/gat/components/config"
+	"goforge.dev/rubric/components/config"
 )
 
 // Handle is an open output target. Write to it, then Close.
@@ -76,8 +76,8 @@ func FromMode(mode config.PagingMode, cfgPager string, interactive, chopLongLine
 	args := fields[1:]
 	base := strings.ToLower(filepath.Base(bin))
 
-	// Refuse a recursive bat/gat pager, like bat does.
-	if base == "bat" || base == "gat" {
+	// Refuse a recursive bat/rubric pager, like bat does.
+	if base == "bat" || base == "rubric" {
 		return Stdout()
 	}
 

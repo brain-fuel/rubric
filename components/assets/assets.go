@@ -148,7 +148,7 @@ var themeAliases = map[string]string{
 	"DarkNeon":                "monokai",
 }
 
-// DefaultThemeName is gat's default theme, matching bat's default appearance.
+// DefaultThemeName is rubric's default theme, matching bat's default appearance.
 const DefaultThemeName = "Monokai Extended"
 
 // GetTheme resolves a theme by bat name or chroma style name. Unknown names

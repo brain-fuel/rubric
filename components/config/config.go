@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"goforge.dev/gat/components/linerange"
-	"goforge.dev/gat/components/style"
+	"goforge.dev/rubric/components/linerange"
+	"goforge.dev/rubric/components/style"
 )
 
 // NonprintableNotation selects how non-printable characters are rendered.

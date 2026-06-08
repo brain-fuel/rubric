@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"goforge.dev/gat/components/config"
+	"goforge.dev/rubric/components/config"
 )
 
 var ansiRE = regexp.MustCompile("\x1b\\[[0-9;]*[A-Za-z]")
