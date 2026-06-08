@@ -1,0 +1,51 @@
+# A "worker" is classified along two independent (orthogonal) axes:
+#   - determinism: does the same input+world always give the same result?
+#   - effectfulness: how does the worker interact with the world?
+# A worker_type is the product: one determinism value AND one
+# effectfulness value.
+
+axes:
+  determinism:
+    description: Whether the same inputs and world always yield the same result.
+    values:
+      deterministic:
+        definition: >-
+          A worker that always yields the same outputs and side-effects,
+          given the same inputs and world.
+      non_deterministic:
+        definition: >-
+          A worker that does not always yield the same outputs and side-effects,
+          given the same inputs and world.
+
+  effectfulness:
+    description: >-
+      Either pure, or a set of one or more effects. An effect is any
+      interaction with the world beyond the worker's declared inputs and
+      outputs.
+    pure:
+      definition: >-
+        A worker whose result depends only on its declared inputs and that
+        produces no side-effects -- it neither reads from nor writes to the
+        world. (Referentially transparent.)
+    effects:
+      input_effect:
+        definition: >-
+          The worker reads from the world (e.g. a database, stdin, the clock,
+          environment, network). Its output may depend on world state, not
+          only on declared inputs.
+      output_effect:
+        definition: >-
+          The worker writes to / mutates the world (e.g. a database write,
+          stdout, sending a request).
+
+# A worker_type is the product of the two axes.
+# effectfulness is `pure` OR a non-empty set of effects, giving 4 values:
+#   pure | [input_effect] | [output_effect] | [input_effect, output_effect]
+# 2 determinism x 4 effectfulness = 8 worker types.
+worker_type:
+  determinism: [deterministic, non_deterministic]
+  effectfulness:
+    - pure
+    - [input_effect]
+    - [output_effect]
+    - [input_effect, output_effect]

@@ -1,0 +1,7 @@
+top-namespace: gat
+vcs:
+    name: git
+    auto-add: false
+tag-patterns:
+    stable: stable-*
+    release: v[0-9]*
