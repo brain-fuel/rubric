@@ -24,7 +24,7 @@ import (
 	termdetect "goforge.dev/rubric/components/termdetect"
 )
 
-const version = "1.0.0"
+const version = "1.0.1"
 
 // Run parses args (excluding the program name), executes rubric, and returns the
 // process exit code.
@@ -186,6 +186,9 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	force := getBool(fs, "force-colorization")
 
 	// Colored output.
+	if err := validateChoice("color", getString(fs, "color"), "auto", "always", "never"); err != nil {
+		return cfg, err
+	}
 	switch getString(fs, "color") {
 	case "always":
 		cfg.ColoredOutput = true
@@ -199,14 +202,23 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 		interactive = true
 	}
 	cfg.TrueColor = termdetect.TrueColor()
+	if err := validateChoice("italic-text", getString(fs, "italic-text"), "always", "never"); err != nil {
+		return cfg, err
+	}
 	cfg.UseItalicText = getString(fs, "italic-text") == "always"
 
 	// Non-printable.
 	cfg.ShowNonprintable = showAll
+	if err := validateChoice("nonprintable-notation", getString(fs, "nonprintable-notation"), "unicode", "caret"); err != nil {
+		return cfg, err
+	}
 	if getString(fs, "nonprintable-notation") == "caret" {
 		cfg.NonprintableNotation = config.NotationCaret
 	} else {
 		cfg.NonprintableNotation = config.NotationUnicode
+	}
+	if err := validateChoice("binary", getString(fs, "binary"), "no-printing", "as-text"); err != nil {
+		return cfg, err
 	}
 	if getString(fs, "binary") == "as-text" {
 		cfg.Binary = config.BinaryAsText
@@ -218,13 +230,18 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	// Tab width.
 	cfg.TabWidth = 4
 	if tw := getString(fs, "tabs"); tw != "" {
-		if n, err := strconv.Atoi(tw); err == nil {
-			cfg.TabWidth = n
+		n, err := parseNonNegativeFlag("tabs", tw)
+		if err != nil {
+			return cfg, err
 		}
+		cfg.TabWidth = n
 	}
 
 	// Wrapping.
 	termWidthExplicit := getString(fs, "terminal-width") != ""
+	if err := validateChoice("wrap", getString(fs, "wrap"), "auto", "never", "character", "word"); err != nil {
+		return cfg, err
+	}
 	switch getString(fs, "wrap") {
 	case "never":
 		cfg.WrappingMode = config.WrapNever
@@ -246,6 +263,9 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	}
 
 	// Paging.
+	if err := validateChoice("paging", getString(fs, "paging"), "auto", "always", "never"); err != nil {
+		return cfg, err
+	}
 	cfg.PagingMode = resolvePaging(fs, interactive)
 	cfg.Pager = getString(fs, "pager")
 
@@ -266,13 +286,18 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	if getBool(fs, "squeeze-blank") {
 		cfg.SqueezeLines = 1
 		if sl := getString(fs, "squeeze-limit"); sl != "" {
-			if n, err := strconv.Atoi(sl); err == nil {
-				cfg.SqueezeLines = n
+			n, err := parseNonNegativeFlag("squeeze-limit", sl)
+			if err != nil {
+				return cfg, err
 			}
+			cfg.SqueezeLines = n
 		}
 	}
 
 	// Strip ANSI.
+	if err := validateChoice("strip-ansi", getString(fs, "strip-ansi"), "auto", "always", "never"); err != nil {
+		return cfg, err
+	}
 	switch getString(fs, "strip-ansi") {
 	case "always":
 		cfg.StripAnsi = config.StripAlways
@@ -294,6 +319,9 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	}
 
 	// Decorations override.
+	if err := validateChoice("decorations", getString(fs, "decorations"), "auto", "never", "always"); err != nil {
+		return cfg, err
+	}
 	switch getString(fs, "decorations") {
 	case "never":
 		cfg.StyleComponents = style.NewComponents([]style.Component{style.Plain})
@@ -332,9 +360,11 @@ func buildConfig(fs *flag.FlagSet, interactive bool) (config.Config, error) {
 	if getBool(fs, "diff") {
 		cfg.VisibleLines = config.VisibleLines{DiffMode: true, DiffContext: 2}
 		if dc := getString(fs, "diff-context"); dc != "" {
-			if n, err := strconv.Atoi(dc); err == nil {
-				cfg.VisibleLines.DiffContext = n
+			n, err := parseNonNegativeFlag("diff-context", dc)
+			if err != nil {
+				return cfg, err
 			}
+			cfg.VisibleLines.DiffContext = n
 		}
 		cfg.StyleComponents.Insert(style.Changes)
 	} else if ranges := getStringArray(fs, "line-range"); len(ranges) > 0 {
@@ -408,6 +438,23 @@ func resolvePaging(fs *flag.FlagSet, interactive bool) config.PagingMode {
 		}
 		return config.PagingNever
 	}
+}
+
+func validateChoice(name, got string, allowed ...string) error {
+	for _, v := range allowed {
+		if got == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid --%s %q (want %s)", name, got, strings.Join(allowed, ", "))
+}
+
+func parseNonNegativeFlag(name, value string) (int, error) {
+	n, err := strconv.Atoi(value)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("invalid --%s %q (want a non-negative integer)", name, value)
+	}
+	return n, nil
 }
 
 func resolveTermWidth(arg string) int {
@@ -544,7 +591,7 @@ func tokenize(line string) []string {
 
 // --- small flag helpers -------------------------------------------------
 
-func getBool(fs *flag.FlagSet, name string) bool   { v, _ := fs.GetBool(name); return v }
+func getBool(fs *flag.FlagSet, name string) bool { v, _ := fs.GetBool(name); return v }
 func getString(fs *flag.FlagSet, name string) string {
 	v, _ := fs.GetString(name)
 	return v
